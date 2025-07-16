@@ -3,6 +3,7 @@ import streamlit as st
 st.set_page_config(layout="wide")
 import altair as alt
 import os
+import plotly.graph_objects as go
 
 st.markdown(
     '''
@@ -118,7 +119,6 @@ col2.metric("Total Principal", f"{total_principal:,.2f}" if total_principal is n
 col3.metric("Total Interest", f"{total_interest:,.2f}" if total_interest is not None else "N/A")
 col4.metric("Average Loan Balance", f"{avg_loan_balance:,.2f}" if avg_loan_balance is not None else "N/A")
 
-# --- Status Distribution by Loan Product ---
 
 
 # --- Collections Performance Metrics ---
@@ -278,6 +278,48 @@ if 'Disbursed Date' in filtered_df.columns and 'Disbursed' in filtered_df.column
         )
     st.altair_chart(chart, use_container_width=True)
 
+# --- Loan Product Distribution and Status Distribution by Loan Product (side by side) ---
+if 'Loan Product' in filtered_df.columns:
+    prod_counts = filtered_df['Loan Product'].value_counts().reset_index()
+    prod_counts.columns = ['Loan Product', 'Count']
+
+left_col, right_col = st.columns([1, 1])
+with left_col:
+    if 'Loan Product' in filtered_df.columns:
+        fig = go.Figure(data=[go.Pie(
+            labels=prod_counts['Loan Product'],
+            values=prod_counts['Count'],
+            hole=0.4,
+            pull=[0.05]*len(prod_counts),
+            marker=dict(line=dict(color='#000000', width=1)),
+            textinfo='label+percent',
+            hoverinfo='label+value+percent',
+        )])
+        fig.update_traces(textfont_size=14)
+        st.header('Loan Product Distribution (Number of Loans)')
+        fig.update_layout(
+            showlegend=True,
+            height=500,
+            width=700,
+            margin=dict(l=20, r=20, t=60, b=20),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig, use_container_width=False)
+with right_col:
+    if 'Loan Product' in filtered_df.columns and 'Status' in filtered_df.columns:
+        status_prod_counts = filtered_df.groupby(['Loan Product', 'Status']).size().reset_index(name='Count')
+        st.header('Status Distribution by Loan Product')
+        chart = alt.Chart(status_prod_counts).mark_bar().encode(
+            x=alt.X('Loan Product:N', title='Loan Product', sort=alt.EncodingSortField(field='Count', op='sum', order='descending')),
+            y=alt.Y('Count:Q', title='Number of Loans'),
+            color=alt.Color('Status:N', title='Status'),
+            tooltip=['Loan Product', 'Status', 'Count']
+        ).properties(
+            width=700, height=500,
+        )
+        st.altair_chart(chart, use_container_width=False)
+
 # --- PAR per branch over the months ---
 # Define PAR statuses
 par_statuses = ['Arrears', 'Missed Repayment', 'Past Maturity', 'Past Due']
@@ -315,18 +357,11 @@ if 'Outstanding' in df.columns and 'Status' in df.columns and 'Branch Name' in d
         )
         st.altair_chart(chart, use_container_width=True)
     with right_col:
-        if 'Loan Product' in filtered_df.columns and 'Status' in filtered_df.columns:
-            status_prod_counts = filtered_df.groupby(['Loan Product', 'Status']).size().reset_index(name='Count')
-            st.header('Status Distribution by Loan Product')
-            chart = alt.Chart(status_prod_counts).mark_bar().encode(
-                x=alt.X('Loan Product:N', title='Loan Product', sort=alt.EncodingSortField(field='Count', op='sum', order='descending')),
-                y=alt.Y('Count:Q', title='Number of Loans'),
-                color=alt.Color('Status:N', title='Status'),
-                tooltip=['Loan Product', 'Status', 'Count']
-            ).properties(
-                width=800, height=500,
-            )
-            st.altair_chart(chart, use_container_width=False)
+        # This block is now redundant as the pie chart is moved
+        pass
+
+# --- 3D Pie Chart for Loan Product Distribution ---
+# This section is now redundant as the pie chart is moved
 
 # --- Disbursements 2024 vs 2025 to July 15 ---
 if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
