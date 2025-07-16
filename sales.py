@@ -118,6 +118,9 @@ col2.metric("Total Principal", f"{total_principal:,.2f}" if total_principal is n
 col3.metric("Total Interest", f"{total_interest:,.2f}" if total_interest is not None else "N/A")
 col4.metric("Average Loan Balance", f"{avg_loan_balance:,.2f}" if avg_loan_balance is not None else "N/A")
 
+# --- Status Distribution by Loan Product ---
+
+
 # --- Collections Performance Metrics ---
 # Clean relevant columns
 for col in ['Paid Amount', 'Total Due Amount', 'Penalty Amount', 'Pending Penalty Due', 'Days Past Due']:
@@ -297,11 +300,10 @@ if 'Outstanding' in df.columns and 'Status' in df.columns and 'Branch Name' in d
     overall_merged['Branch Name'] = 'All Branches'
     # Combine with branch-level data
     par_final = pd.concat([par_merged, overall_merged], ignore_index=True)
-    # Layout: PAR chart on left half of the screen
+    # Layout: PAR chart on left half, status-by-product on right half
     left_col, right_col = st.columns([1, 1])
     with left_col:
         st.header('PAR per Branch Over the Months')
-        # Branch filter for PAR chart (now below the header)
         par_branch_options = ['All Branches'] + sorted([b for b in par_merged['Branch Name'].unique() if b != 'All Branches'])
         selected_par_branches = st.multiselect('Select Branches for PAR Chart', options=par_branch_options, default=par_branch_options)
         par_final_filtered = par_final[par_final['Branch Name'].isin(selected_par_branches)]
@@ -312,8 +314,19 @@ if 'Outstanding' in df.columns and 'Status' in df.columns and 'Branch Name' in d
             tooltip=['Branch Name', 'Month', alt.Tooltip('PAR%', format='.2f')]
         )
         st.altair_chart(chart, use_container_width=True)
-    # --- Collections over time plot ---
-    # (Removed standalone Collections Over Time visualization) 
+    with right_col:
+        if 'Loan Product' in filtered_df.columns and 'Status' in filtered_df.columns:
+            status_prod_counts = filtered_df.groupby(['Loan Product', 'Status']).size().reset_index(name='Count')
+            st.header('Status Distribution by Loan Product')
+            chart = alt.Chart(status_prod_counts).mark_bar().encode(
+                x=alt.X('Loan Product:N', title='Loan Product', sort=alt.EncodingSortField(field='Count', op='sum', order='descending')),
+                y=alt.Y('Count:Q', title='Number of Loans'),
+                color=alt.Color('Status:N', title='Status'),
+                tooltip=['Loan Product', 'Status', 'Count']
+            ).properties(
+                width=800, height=500,
+            )
+            st.altair_chart(chart, use_container_width=False)
 
 # --- Disbursements 2024 vs 2025 to July 15 ---
 if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
