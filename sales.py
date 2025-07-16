@@ -291,18 +291,24 @@ with left_col:
             values=prod_counts['Count'],
             hole=0.4,
             pull=[0.05]*len(prod_counts),
-            marker=dict(line=dict(color='#000000', width=1)),
-            textinfo='label+percent',
+            marker=dict(line=dict(color='#000000', width=0.5)),
             hoverinfo='label+value+percent',
         )])
-        fig.update_traces(textfont_size=14)
+        fig.update_traces(textfont_size=10)
         st.header('Loan Product Distribution (Number of Loans)')
         fig.update_layout(
             showlegend=True,
-            legend=dict(font=dict(size=12)),
+            legend=dict(
+                font=dict(size=12),
+                orientation='h',
+                x=0.5,
+                y=1.15,
+                xanchor='center',
+                yanchor='bottom',
+            ),
             height=600,
-            width=900,
-            margin=dict(l=20, r=20, t=60, b=20),
+            width=500,
+            margin=dict(l=20, r=0, t=60, b=20),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         )
