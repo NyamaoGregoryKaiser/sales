@@ -299,8 +299,9 @@ with left_col:
         st.header('Loan Product Distribution (Number of Loans)')
         fig.update_layout(
             showlegend=True,
-            height=500,
-            width=700,
+            legend=dict(font=dict(size=12)),
+            height=600,
+            width=900,
             margin=dict(l=20, r=20, t=60, b=20),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
