@@ -408,7 +408,11 @@ if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
         df[amt_col] = pd.to_numeric(df[amt_col].astype(str).str.replace(',', '').str.strip(), errors='coerce')
         df = df.dropna(subset=['Disbursed Date', amt_col])
         df = df[(df['Disbursed Date'] >= date_start) & (df['Disbursed Date'] <= date_end)]
-        out = df.groupby(['Disbursed Date', 'Branch Name'])[amt_col].sum().reset_index()
+        # Group by Disbursed Date, Branch Name, and Loan Product if present
+        group_cols = ['Disbursed Date', 'Branch Name']
+        if 'Loan Product' in df.columns:
+            group_cols.append('Loan Product')
+        out = df.groupby(group_cols)[amt_col].sum().reset_index()
         out['Year'] = year
         out = out.rename(columns={'Disbursed Date': 'Disbursed Date', amt_col: 'Disbursed', 'Branch Name': 'Branch Name'})
         out = out.sort_values('Disbursed Date')
@@ -421,12 +425,16 @@ if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
     disb_2024 = add_month_day(disb_2024)
     disb_2025 = add_month_day(disb_2025)
     disb_compare = pd.concat([disb_2024, disb_2025], ignore_index=True)
-    # Add month and branch filters (use branch names)
+    # Add month, branch, and product filters (use branch names and loan products)
     month_name_order = ['January', 'February', 'March', 'April', 'May', 'June', 'July']
     all_months = [m for m in month_name_order if m in disb_compare['Disbursed Date'].dt.strftime('%B').unique()]
     all_branches = sorted(disb_compare['Branch Name'].dropna().unique())
+    if 'Loan Product' in disb_compare.columns:
+        all_products = sorted(disb_compare['Loan Product'].dropna().unique())
+    else:
+        all_products = []
     # Layout: Header and filters on the same row, with smaller header font
-    header_col, month_col, branch_col = st.columns([2, 1, 1])
+    header_col, month_col, branch_col, product_col = st.columns([2, 1, 1, 1])
     with header_col:
         st.markdown("""
             <h2 style='margin-bottom: 0.5rem; font-size: 2rem;'>Disbursements 2024 vs 2025 to July 15</h2>
@@ -435,11 +443,15 @@ if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
         selected_month = st.selectbox('Filter by Month', options=['All'] + all_months, key='disb_month_filter')
     with branch_col:
         selected_branch = st.selectbox('Filter by Branch', options=['All'] + all_branches, key='disb_branch_filter')
+    with product_col:
+        selected_product = st.selectbox('Filter by Product', options=['All'] + all_products, key='disb_product_filter')
     filtered_compare = disb_compare.copy()
     if selected_month != 'All':
         filtered_compare = filtered_compare[filtered_compare['Disbursed Date'].dt.strftime('%B') == selected_month]
     if selected_branch != 'All':
         filtered_compare = filtered_compare[filtered_compare['Branch Name'] == selected_branch]
+    if selected_product != 'All' and 'Loan Product' in filtered_compare.columns:
+        filtered_compare = filtered_compare[filtered_compare['Loan Product'] == selected_product]
     # Ensure MonthDay is sorted in calendar order
     from datetime import datetime
     monthday_order = [datetime(2000, m, d).strftime('%m-%d') for m in range(1, 8) for d in range(1, 32)
@@ -450,6 +462,8 @@ if os.path.exists('2024jan-jun.csv') and os.path.exists('2025jan-jul.csv'):
         x=alt.X('MonthDay:N', title='Month-Day', sort=monthday_order),
         y=alt.Y('Disbursed:Q', title='Total Disbursed'),
         color=alt.Color('Year:N', title='Year'),
-        tooltip=['MonthDay', 'Year', 'Branch Name', alt.Tooltip('Disbursed', format=',.2f')]
+        tooltip=['MonthDay', 'Year', 'Branch Name',
+                 'Loan Product' if 'Loan Product' in filtered_compare.columns else alt.value(''),
+                 alt.Tooltip('Disbursed', format=',.2f')]
     )
     st.altair_chart(chart, use_container_width=True) 
